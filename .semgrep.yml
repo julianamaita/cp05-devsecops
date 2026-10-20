@@ -1,0 +1,6 @@
+rules:
+  - id: no-eval
+    pattern: eval(...)
+    message: "Uso de eval() permite execução de código arbitrário (code injection)"
+    languages: [javascript]
+    severity: ERROR

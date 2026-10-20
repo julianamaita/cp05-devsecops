@@ -1,0 +1,36 @@
+name: Security Pipeline
+on: [push, pull_request]
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  semgrep:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep (relatorio completo, regras auto)
+        run: semgrep scan --config auto || true
+      - name: Semgrep (barreira - bloqueia eval)
+        run: semgrep scan --config .semgrep.yml --error
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t cp05-site:${{ github.sha }} .
+      - name: Trivy scan (bloqueia CVE CRITICAL)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --severity CRITICAL --exit-code 1 --ignore-unfixed \
+            cp05-site:${{ github.sha }}
